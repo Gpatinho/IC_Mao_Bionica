@@ -1,4 +1,39 @@
 import numpy as np 
-from tensorflow.keras.models import sequential 
-form tensorflow.keras.layers import Dense
+from tensorflow.keras.models import sequential # biblioteca, é um modelo de rede neural simples em que as camadas estão em sequência (uma após a outra).
+form tensorflow.keras.layers import Dense # biblioteca, é uma camada totalmente conectada (cada entrada conecta a cada neurônio da próxima camada).
+# nem todas as redes neurais usam "tensorflow.keras" pode usar outros tipos de modelos de contrução de redes neurais.
+
+# Exemplos de temperaturas com a variavel "Exemplos_Temperatura" 
+
+Exemplos_Temperatura = np.array ([ 
+
+[15];       # muito frio
+[18],
+[22],
+[25],       # temperadura ideal
+[26],
+[33],       # muito quente 
+[35],
+[36]
+
+])
+
+# comando para ligar e desligar os leds cada comando significa qual led vai ficar lgado ou qual led vai ficar deligado em cada estado que estiver a temperatura 
+Exemplos_Comandos = np.array([
+
+    [1, 1, 0, 0, 0],  # azul + amarelo (muito frio)
+    [1, 1, 0, 0, 0],
+    [0, 0, 1, 0, 0],  # verde (ideal)
+    [0, 0, 1, 0, 0],
+    [0, 0, 0, 1, 1],  # vermelho + branco (muito quente)
+    [0, 0, 0, 1, 1]
+
+])
+
+
+
+
+
+
+
 
