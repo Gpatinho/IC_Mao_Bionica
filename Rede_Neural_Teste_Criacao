@@ -30,6 +30,21 @@ Exemplos_Comandos = np.array([
 
 ])
 
+model = sequential(), # criando uma rede simples e em sequencia sem ramificações 
+model.add(Dense(8, input_dim=1 ativa = 'relu' )) # usamos 8 neuronios pois não é um problema dificl de ser solucionado então usamos poucos neuronios, input =1 pq temos apenas uma saida e "ativa= relu" é o que usamos para ativar o neuronio se ele for util na camada oculta 
+model.add(Dense(5, ativa = 'sigmoid' )) # "ativa = sigmoid" é o que usamos para tranformar os dados de sainda em zero e um para utilizar com os led que serão saidas de liga e desliga
+
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy']) # "compile" define como a rede sera avaliada e ajustada
+model.fit(X, y, epochs=500, verbose=0)# "verbose" não imprime nada no terminal, "epochs" repete  treinamento 500 vezes, "fit" treina a rede com os dados 
+
+testes = np.array([[15], [22], [36]])
+pred = model.predict(testes)  # "predict" faz a rede gerar saidas com bases nas entradas
+
+for t, p in zip(testes, pred): 
+    print(f"Temp: {t[0]}°C → LEDs: {[round(i) for i in p]}") # "round" converte para zero ou um para simular os ledes liga e desliga
+
+
+
 
 
 
