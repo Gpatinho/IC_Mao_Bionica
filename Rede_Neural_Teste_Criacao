@@ -43,8 +43,55 @@ pred = model.predict(testes)  # "predict" faz a rede gerar saidas com bases nas 
 for t, p in zip(testes, pred): 
     print(f"Temp: {t[0]}°C → LEDs: {[round(i) for i in p]}") # "round" converte para zero ou um para simular os ledes liga e desliga
 
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+import serial
+import numpy as np
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
 
+# === Etapa de Treinamento ===
+# X: Temperatura em graus Celsius (simulados para treinar)
+X = np.array([[15], [20], [25], [28], [32], [35], [38], [40]], dtype=float)
+# y: Classe da temperatura
+# 0 = frio, 1 = ideal, 2 = quente
+y = np.array([0, 0, 1, 1, 2, 2, 2, 2], dtype=int)
 
+# One-hot encoding da saída
+from tensorflow.keras.utils import to_categorical
+y_cat = to_categorical(y, num_classes=3)
+
+# Criar modelo
+model = Sequential()
+model.add(Dense(8, input_dim=1, activation='relu'))
+model.add(Dense(3, activation='softmax'))
+
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.fit(X, y_cat, epochs=500, verbose=0)
+
+# === Comunicação Serial com ESP32 ===
+ser = serial.Serial('COM3', 115200)  # Troque COM3 pela sua porta
+print("Conectado ao ESP32!")
+
+def decidir_led(pred):
+    classe = np.argmax(pred)
+    if classe == 0:  # Muito frio
+        return "LED=azul_amarelo"
+    elif classe == 1:  # Ideal
+        return "LED=verde"
+    elif classe == 2:  # Muito quente
+        return "LED=vermelho_branco"
+
+while True:
+    try:
+        linha = ser.readline().decode().strip()
+        temperatura = float(linha)
+        entrada = np.array([[temperatura]])
+        pred = model.predict(entrada, verbose=0)
+        comando = decidir_led(pred)
+        print(f"Temp: {temperatura:.2f}°C → {comando}")
+        ser.write((comando + "\n").encode())
+    except Exception as e:
+        print("Erro:", e)
 
 
 
