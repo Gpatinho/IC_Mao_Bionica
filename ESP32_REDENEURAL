@@ -1,0 +1,41 @@
+from machine import ADC, Pin
+import time
+import sys
+
+# Setup do LM35 no GPIO34
+sensor = ADC(Pin(34))
+sensor.atten(ADC.ATTN_11DB)
+
+# Setup dos LEDs
+leds = {
+    'vermelho': Pin(2, Pin.OUT),
+    'branco': Pin(4, Pin.OUT),
+    'verde': Pin(5, Pin.OUT),
+    'azul': Pin(15, Pin.OUT),
+    'amarelo': Pin(18, Pin.OUT),
+}
+
+def desligar_todos():
+    for led in leds.values():
+        led.value(0)
+
+def ler_temperatura():
+    valor = sensor.read()
+    tensao = (valor / 4095) * 3.3
+    temperatura = tensao * 100  # 10 mV por grau Celsius
+    return temperatura
+
+while True:
+    temp = ler_temperatura()
+    print(temp)  # Envia a temperatura via serial
+    time.sleep(2)
+
+    # Checa se o PC enviou comando
+    if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+        comando = sys.stdin.readline().strip()
+        if comando.startswith("LED="):
+            desligar_todos()
+            nomes_leds = comando.replace("LED=", "").split("_")
+            for nome in nomes_leds:
+                if nome in leds:
+                    leds[nome].value(1)
