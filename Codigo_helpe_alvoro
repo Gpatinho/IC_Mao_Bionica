@@ -1,0 +1,138 @@
+#Importando bibliotecas
+import numpy as np
+import pandas as pd
+import tensorflow
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import confusion_matrix, accuracy_score
+import os
+from tensorflow.keras.optimizers import Adam, RMSprop, SGD
+import optuna
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+
+-------------------
+# Acesso ao google drive -> Seu dataset vai estar aqui
+from google.colab import drive
+drive.mount('/content/drive')
+
+-----------------
+"""
+Definindo uma pasta HOME, essa pasta sera o local onde seus arquivos serao salvos
+"""
+
+%cd /content/drive/MyDrive/ #Nesse "/content/drive/MyDrive/" voce coloca o caminho de sua pasta
+HOME = os.getcwd()
+model_path = os.path.join(HOME, 'model_best.h5')
+metrics_path = os.path.join(HOME, 'optuna_metrics.csv')
+
+--------------------
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+# Dividindo o dataset
+dataset = pd.read_csv('Churn_Modelling.csv')
+
+# Correção: usando parênteses no drop
+X = dataset.drop(columns=["target"])
+y = dataset["target"]
+
+# Separando o dataset em teste e treino
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+-----------------------
+#Criando um modelo
+def create_model(trial):
+    model = Sequential()
+    # Hiperparâmetros a otimizar
+    n_layers = trial.suggest_int('n_layers', 1,3 ,5)  # Quantidade de camadas ocultas
+    for i in range(n_layers):
+        n_neurons = trial.suggest_int(f'n_neurons_l{i}', [4, 32, 64])
+        activation = trial.suggest_categorical(f'activation_l{i}', ['relu', 'tanh'])
+        if i == 0:
+            model.add(Dense(n_neurons, input_dim=1, activation=activation))
+        else:
+            model.add(Dense(n_neurons, activation=activation))
+    # Camada de saída
+    model.add(Dense(5, activation='sigmoid'))
+
+    #Escolher otimizador e learning rate
+    optimizer_options = {
+        'adam': Adam,
+        'rmsprop': RMSprop,
+        'sgd': SGD
+
+    }
+    optimizer_selected = trial.suggest_categorical('optimizer', list(optimizer_options.keys()))
+    learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-1, log=True)
+
+    optimizer = optimizer_options[optimizer_selected](learning_rate=learning_rate)
+
+    model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+
+    return model
+
+results = []
+
+----------------------------
+# Criando uma função para o objetivo
+def objective(trial):
+    model = create_model(trial)
+
+    # Testando batches
+    batch_size = trial.suggest_categorical('batch_size', [8, 16, 32])
+
+    """
+    Adicionando callbacks:
+    1º EarlyStopping = para parar se não melhorar
+    2º ReduceLROnPlateau = para reduzir o learning rate
+    3º ModelCheckpoint = para salvar o melhor modelo
+    """
+    callbacks = [
+        EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, verbose=0),
+        ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-5, verbose=0),
+        ModelCheckpoint(model_path, monitor='val_loss', save_best_only=True, verbose=0)
+    ]
+
+
+    history = model.fit(X_train, y_train,
+                        validation_data=(X_test, y_test),
+                        epochs=100,
+                        batch_size=batch_size,
+                        callbacks=callbacks,
+                        verbose=0)
+
+    val_accuracy = history.history['val_accuracy'][-1]
+    return val_accuracy
+
+----------------------------
+#Criando o estudo com o optuna(biblioteca para otimizar a rede)
+study = optuna.create_study(direction='maximize')
+study.optimize(objective, n_trials=10)
+
+--------------------------
+# Salvando as métricas após terminar
+df_results = pd.DataFrame(results)
+df_results.to_csv(metrics_path, index=False)
+
+# 8. Resultado final
+print('Melhor trial:')
+trial = study.best_trial
+
+print(f'  Acuracia: {trial.value:.4f}')
+print('  Melhores hiperparametros:')
+for key, value in trial.params.items():
+    print(f'    {key}: {value}')
+
+print(f"\n✅ Modelo salvo em: {model_path}")
+print(f"✅ Métricas salvas em: {metrics_path}")
+
+
+
+
+
+
+
+
+
